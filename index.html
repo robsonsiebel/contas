@@ -251,8 +251,16 @@ function headers(){return{"Authorization":`Bearer ${cfg.token}`,"Accept":"applic
 async function pull(){
   setSync("busy","A carregar…");
   const r=await fetch(`${apiUrl()}?ref=${encodeURIComponent(cfg.branch||"main")}&t=${Date.now()}`,{headers:headers(),cache:"no-store"});
-  if(r.status===404){remoteSha=null;return null}
-  if(!r.ok)throw new Error(`GitHub respondeu ${r.status}${r.status===401?" (token inválido)":""}`);
+  if(r.status===404){
+    const repoUrl=`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}`;
+    const rr=await fetch(repoUrl,{headers:headers(),cache:"no-store"});
+    if(!rr.ok)throw new Error(`Repositório inacessível (${rr.status}). Confirma owner “${cfg.owner}”, repositório “${cfg.repo}” e acesso do token.`);
+    remoteSha=null;return null;
+  }
+  if(!r.ok){
+    const reason=r.status===401?"token inválido ou incompleto":r.status===403?"token sem permissão Contents: Read and write":`resposta HTTP ${r.status}`;
+    throw new Error(`GitHub: ${reason}`);
+  }
   const j=await r.json();remoteSha=j.sha;
   let text;
   if(j.content)text=b64decode(j.content);
@@ -666,7 +674,11 @@ async function connect(fromSettings){
     else{ // file does not exist yet: create it from local data
       if(fromSettings||confirm("O ficheiro ainda não existe no repositório. Criar com os dados deste browser?")){await push();banner(null)}
     }
-  }catch(e){setSync("err","Erro de ligação");banner(e.message+" — a trabalhar com a cópia local. ",[["Tentar de novo",()=>connect().then(render)],["Definições",openSettings]])}
+  }catch(e){
+    setSync("err","Erro de ligação");
+    const target=`${cfg.owner||"(owner vazio)"}/${cfg.repo||"(repo vazio)"}/${cfg.path||"data.json"}@${cfg.branch||"main"}`;
+    banner(`${e.message} Destino: ${target}. A trabalhar com a cópia local. `,[["Tentar de novo",()=>connect().then(render)],["Definições",openSettings]]);
+  }
 }
 (async function(){
   data=loadLocal()||normalize(emptyData());
