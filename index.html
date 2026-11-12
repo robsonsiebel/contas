@@ -675,9 +675,11 @@ async function connect(fromSettings){
       if(fromSettings||confirm("O ficheiro ainda não existe no repositório. Criar com os dados deste browser?")){await push();banner(null)}
     }
   }catch(e){
-    setSync("err","Erro de ligação");
     const target=`${cfg.owner||"(owner vazio)"}/${cfg.repo||"(repo vazio)"}/${cfg.path||"data.json"}@${cfg.branch||"main"}`;
-    banner(`${e.message} Destino: ${target}. A trabalhar com a cópia local. `,[["Tentar de novo",()=>connect().then(render)],["Definições",openSettings]]);
+    const detail=`${e.message} — ${target}`;
+    setSync("err",detail);
+    banner(`${detail}. A trabalhar com a cópia local. `,[["Tentar de novo",()=>connect().then(render)],["Definições",openSettings]]);
+    if(fromSettings)alert(`Falha de ligação:\n${detail}`);
   }
 }
 (async function(){
