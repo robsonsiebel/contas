@@ -1,0 +1,5 @@
+data.json
+*.token
+.env
+.env.*
+.DS_Store
