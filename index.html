@@ -240,8 +240,9 @@ function totals(y,m){
   const inv=data.categories.filter(c=>c.invest).reduce((s,c)=>s+(by[c.name]||0),0);
   const spent=Object.entries(by).reduce((s,[k,v])=>s+(data.categories.find(c=>c.name===k)?.invest?0:v),0);
   const irsRefund=+mo.irsRefund||0;
-  const income=mo.salary+mo.bonus+irsRefund;
-  return{by,inv,spent,irsRefund,income,left:income-spent-inv,hasData:mo.expenses.length>0||income>0};
+  const mealAllowance=+mo.mealAllowance||0;
+  const income=mo.salary+mo.bonus+irsRefund+mealAllowance;
+  return{by,inv,spent,irsRefund,mealAllowance,income,left:income-spent-inv,hasData:mo.expenses.length>0||income>0};
 }
 
 /* ---------- GitHub sync ---------- */
@@ -341,6 +342,7 @@ function renderMonth(v,m){
   v.append(head);
   const k=el("div",{class:"kpis"});
   k.append(moneyInput("Salário",mo.salary,n=>{month(year,m,true).salary=n;changed();render()}));
+  k.append(moneyInput("Subsídio de alimentação",mo.mealAllowance,n=>{month(year,m,true).mealAllowance=n;changed();render()},money));
   k.append(moneyInput("Bónus / outros",mo.bonus,n=>{month(year,m,true).bonus=n;changed();render()}));
   k.append(moneyInput("Reembolso do IRS",mo.irsRefund,n=>{month(year,m,true).irsRefund=n;changed();render()},money));
   k.append(kpi("Gasto",fmt(t.spent)));
@@ -410,7 +412,7 @@ function renderYear(v){
   const active=ms.filter(t=>t.hasData).length||1;
   v.append(el("div",{class:"row"},el("h2",{text:`Resumo ${year}`})));
   const k=el("div",{class:"kpis"});
-  k.append(kpi("Rendimento",fmt0(income),"","salário + bónus + IRS"),kpi("Reembolso do IRS",fmt0(sum(t=>t.irsRefund))),kpi("Gasto",fmt0(spent),"",`${fmt0(spent/active)} / mês`),kpi("Investido",fmt0(inv)),
+  k.append(kpi("Rendimento",fmt0(income),"","salário + alimentação + bónus + IRS"),kpi("Reembolso do IRS",fmt0(sum(t=>t.irsRefund))),kpi("Subsídio de alimentação",fmt0(sum(t=>t.mealAllowance))),kpi("Gasto",fmt0(spent),"",`${fmt0(spent/active)} / mês`),kpi("Investido",fmt0(inv)),
     kpi("Sobra",fmt0(left),left>=0?"pos":"neg"),kpi("Taxa de poupança",income?`${Math.round((left+inv)/income*100)}%`:"—","","sobra + investido"));
   v.append(k);
   const charts=el("div",{class:"charts"});
@@ -429,7 +431,7 @@ function renderYear(v){
   const tb=el("tbody");
   const addRow=(label,f,cls)=>{const tr=el("tr",{class:cls||""},el("td",{text:label}));let s=0;ms.forEach(t=>{const val=f(t);s+=val;tr.append(el("td",{text:val?fmt0(val):"–"}))});tr.append(el("td",{text:fmt0(s)}),el("td",{text:fmt0(s/active)}));tb.append(tr)};
   for(const c of spendCats())addRow(c.name,t=>t.by[c.name]||0);
-  addRow("Total gasto",t=>t.spent,"foot");addRow("Investimentos",t=>t.inv);addRow("Reembolso do IRS",t=>t.irsRefund);addRow("Rendimento",t=>t.income);addRow("Sobra",t=>t.hasData?t.left:0,"foot");
+  addRow("Total gasto",t=>t.spent,"foot");addRow("Investimentos",t=>t.inv);addRow("Reembolso do IRS",t=>t.irsRefund);addRow("Subsídio de alimentação",t=>t.mealAllowance);addRow("Rendimento",t=>t.income);addRow("Sobra",t=>t.hasData?t.left:0,"foot");
   tbl.append(tb);
   v.append(el("div",{class:"card"},el("h3",{text:"Tabela"}),el("div",{class:"tablewrap"},tbl)));
 }

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { fixture } from './fixtures.mjs';
+import { fixture as baseFixture } from './fixtures.mjs';
 
 // Playwright is development-only; the deployed application still has no dependencies.
 const { chromium } = createRequire(import.meta.url)(process.env.CONTAS_PLAYWRIGHT_MODULE || '@playwright/test');
@@ -25,12 +25,18 @@ async function seed(context, data, connected = false) {
     if (connected) localStorage.setItem('contas.cfg.v1', JSON.stringify({ owner: 'fixture-owner', repo: 'fixture-data', path: 'data.json', branch: 'main', token: 'synthetic-test-token' }));
   }, { data, connected });
 }
-async function editIRS(page, text) {
-  const input = page.getByRole('textbox', { name: 'Reembolso do IRS', exact: true });
+async function editIncome(page, label, text) {
+  const input = page.getByRole('textbox', { name: label, exact: true });
   await input.fill(text); await input.press('Tab');
 }
 
 try {
+  for (const [label, field, otherField, slug] of [
+    ['Reembolso do IRS', 'irsRefund', 'mealAllowance', 'irs'],
+    ['Subsídio de alimentação', 'mealAllowance', 'irsRefund', 'meal'],
+  ]) {
+  const fixture = structuredClone(baseFixture);
+  fixture.months['2026-11'][otherField] = 100;
   for (const [name, viewport] of [['desktop', { width: 1280, height: 900 }], ['mobile', { width: 390, height: 844 }]]) {
     const context = await browser.newContext({ viewport });
     await context.route('**/*', (route) => route.request().url().startsWith(url) ? route.continue() : route.abort());
@@ -38,22 +44,22 @@ try {
     const page = await context.newPage(); const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(url); await viewMonth(page);
-    assert.equal(await page.getByRole('textbox', { name: 'Reembolso do IRS', exact: true }).inputValue(), '');
+    assert.equal(await page.getByRole('textbox', { name: label, exact: true }).inputValue(), '');
     assert.deepEqual(await readCache(page), fixture, 'Opening legacy data must not save or add fields');
-    assert.equal(await valueFor(page, 'Sobra'), euro.format(1800));
-    await editIRS(page, '1.250,50');
-    const expected = structuredClone(fixture); expected.months['2026-11'].irsRefund = 1250.5;
+    assert.equal(await valueFor(page, 'Sobra'), euro.format(1900));
+    await editIncome(page, label, '1.250,50');
+    const expected = structuredClone(fixture); expected.months['2026-11'][field] = 1250.5;
     assert.deepEqual(await readCache(page), expected, 'Only the selected month IRS field may change');
-    assert.equal(await valueFor(page, 'Sobra'), euro.format(3050.5));
+    assert.equal(await valueFor(page, 'Sobra'), euro.format(3150.5));
     assert.equal(await page.getByRole('textbox', { name: 'Salário', exact: true }).inputValue(), '2000');
     assert.equal(await page.getByRole('textbox', { name: 'Bónus / outros', exact: true }).inputValue(), '100');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await mkdir(new URL('../docs/qa/', import.meta.url), { recursive: true });
-    await page.screenshot({ path: new URL(`../docs/qa/irs-${name}.png`, import.meta.url).pathname, fullPage: true });
+    await page.screenshot({ path: new URL(`../docs/qa/${slug}-${name}.png`, import.meta.url).pathname, fullPage: true });
     await page.getByRole('button', { name: 'Resumo 2026', exact: true }).click();
-    assert.equal(await valueFor(page, 'Rendimento'), euro0.format(5290.5));
-    assert.equal(await valueFor(page, 'Reembolso do IRS'), euro0.format(1250.5));
-    assert.equal(await page.locator('tbody tr').filter({ has: page.getByText('Reembolso do IRS', { exact: true }) }).count(), 1);
+    assert.equal(await valueFor(page, 'Rendimento'), euro0.format(5390.5));
+    assert.equal(await valueFor(page, label), euro0.format(1250.5));
+    assert.equal(await page.locator('tbody tr').filter({ has: page.getByText(label, { exact: true }) }).count(), 1);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.locator('#btnSettings').click();
     const downloadReady = page.waitForEvent('download');
@@ -62,13 +68,13 @@ try {
     for await (const chunk of stream) exported += chunk;
     assert.deepEqual(JSON.parse(exported), expected, 'JSON export must preserve IRS and all previous records');
     await page.reload(); await viewMonth(page);
-    assert.equal(await page.getByRole('textbox', { name: 'Reembolso do IRS', exact: true }).inputValue(), '1250,5');
+    assert.equal(await page.getByRole('textbox', { name: label, exact: true }).inputValue(), '1250,5');
     assert.deepEqual(await readCache(page), expected);
-    await editIRS(page, ''); expected.months['2026-11'].irsRefund = 0;
+    await editIncome(page, label, ''); expected.months['2026-11'][field] = 0;
     assert.deepEqual(await readCache(page), expected);
-    assert.equal(await valueFor(page, 'Sobra'), euro.format(1800));
+    assert.equal(await valueFor(page, 'Sobra'), euro.format(1900));
     assert.deepEqual(errors, []);
-    await context.close(); console.log(`PASS ${name}: legacy preservation, edit, annual totals, export, reload, clearing and responsive layout`);
+    await context.close(); console.log(`PASS ${label} ${name}: legacy preservation, edit, annual totals, export, reload, clearing and responsive layout`);
   }
 
   for (const conflict of [false, true]) {
@@ -100,14 +106,15 @@ try {
     }
     await viewMonth(page); assert.deepEqual(await readCache(page), fixture, 'Fresh remote records must replace stale cache');
     assert.equal(puts, 0);
-    await editIRS(page, '900,25');
+    await editIncome(page, label, '900,25');
     if (conflict) await page.waitForFunction(() => document.querySelector('#banner').textContent.includes('alterado noutro dispositivo'));
     else await page.waitForFunction(() => document.querySelector('#syncText').textContent === 'Guardado no GitHub');
-    const expected = structuredClone(fixture); expected.months['2026-11'].irsRefund = 900.25;
+    const expected = structuredClone(fixture); expected.months['2026-11'][field] = 900.25;
     assert.deepEqual(sent, expected, 'Mocked GitHub save must preserve every fresh record and unknown field');
     assert.deepEqual(await readCache(page), expected);
     await page.waitForTimeout(1500); assert.equal(puts, 1, 'No forced or automatic overwrite after a conflict');
-    await context.close(); console.log(`PASS mocked GitHub ${conflict ? 'conflict' : 'save'}: latest data preserved; no real API writes`);
+    await context.close(); console.log(`PASS ${label} mocked GitHub ${conflict ? 'conflict' : 'save'}: latest data preserved; no real API writes`);
+  }
   }
 } finally {
   await browser.close(); await new Promise((resolve) => server.close(resolve));

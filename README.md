@@ -6,6 +6,12 @@ Aplicação estática pessoal para acompanhar despesas. Não requer build nem de
 
 Os dados financeiros não pertencem a este repositório de código: ficam exclusivamente no repositório privado `contas-dados`. Não copie dados reais, backups ou tokens para aqui, incluindo para testes.
 
+## Subsídio de alimentação
+
+Preencha **Subsídio de alimentação** no mês em que o recebe. Entra uma única vez no rendimento e na sobra e aparece discriminado no resumo anual. Aceita `220,50` e `1.250,50`. Se já estiver incluído no Salário ou em Bónus / outros, separe os valores para não contar duas vezes.
+
+O campo é opcional: meses antigos continuam a funcionar sem migração ou regravação automática. Os registos existentes, incluindo o IRS, são preservados.
+
 ## Reembolso do IRS
 
 No mês em que recebe o dinheiro, preencha **Reembolso do IRS**, ao lado de Salário e Bónus / outros. O valor é somado uma única vez ao rendimento e à sobra; aparece também no resumo anual e na tabela. Aceita valores como `1250,50` ou `1.250,50`.
