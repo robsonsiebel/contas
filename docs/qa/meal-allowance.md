@@ -1,19 +1,16 @@
-# Subsídio de alimentação — verificação de regressão
+# Remoção do subsídio de alimentação
 
-Data: 2026-11-18. Base: `96f7f448b8306aad07c05d14136595e760ff8310`.
+Data: 2026-11-18. A funcionalidade foi retirada a pedido do utilizador.
 
-- Campo mensal opcional `mealAllowance`, apresentado como **Subsídio de alimentação**.
-- Incluído uma vez em rendimento/sobra e discriminado no resumo e tabela anuais.
-- Campo ausente equivale a zero; não há migração nem alteração na sincronização.
-- 9 testes Node aprovados, incluindo preservação do IRS, despesas, investimentos,
-  metadados, outros meses, JSON e comparação privada com a normalização anterior.
-- 8 cenários de navegador aprovados: computador, telemóvel, gravação e conflito
-  simulados, para ambos os campos (IRS e alimentação). Cada cenário conserva
-  um valor preexistente no outro campo; exportação e recarregamento verificados.
-- Apenas dados fictícios em testes e capturas. Contextos isolados, chamadas
-  externas bloqueadas/simuladas, nenhum token real ou dado privado incluído.
-- Criada cópia privada atual antes da alteração. Nenhuma gravação no repositório
-  dos dados faz parte da implementação, dos testes ou da publicação da aplicação.
-
-Capturas: `meal-desktop.png` e `meal-mobile.png`. Os testes existentes do IRS
-permanecem ativos e as suas capturas foram atualizadas para a interface atual.
+- Campo, discriminação anual e contribuição para os totais removidos.
+- Eventual `mealAllowance` histórico permanece intacto no JSON e na exportação;
+  é ignorado nos cálculos. Sem migração, eliminação ou escrita em dados reais.
+- IRS, salário, bónus, despesas e investimentos mantêm o funcionamento anterior.
+- 8 testes Node aprovados, incluindo preservação do campo histórico sem efeito
+  nos totais e comparação da normalização com uma cópia privada atual.
+- 4 cenários de navegador aprovados: computador, telemóvel, gravação e conflito
+  simulados. Verificam ausência do campo mensal/anual, preservação do valor
+  histórico e do IRS, exportação, recarregamento e dados recentes.
+- Capturas e testes contêm apenas dados fictícios. Backup atual em armazenamento
+  privado, nunca neste repositório. As capturas da funcionalidade retirada foram
+  removidas; as capturas do IRS mostram a interface atual.

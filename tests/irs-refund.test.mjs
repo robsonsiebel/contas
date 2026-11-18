@@ -83,30 +83,19 @@ test('annual income includes each monthly refund once', () => {
   assert.equal(a.run('Array.from({length:12},(_,i)=>totals(2026,i+1).irsRefund).reduce((a,b)=>a+b,0)'), 2050.5);
 });
 
-test('meal allowance preserves existing IRS, records and unknown fields', () => {
+test('removed meal allowance stays preserved but no longer affects totals', () => {
   const a = app(); const existing = structuredClone(fixture);
   existing.months['2026-11'].irsRefund = 500;
+  existing.months['2026-11'].mealAllowance = 220.5;
   a.seed(existing);
-  assert.equal(a.json('totals(2026,11)').mealAllowance, 0);
+  const totals = a.json('totals(2026,11)');
+  assert.equal(totals.income, 2600); assert.equal(totals.left, 2300);
+  assert.equal(totals.irsRefund, 500);
   assert.deepEqual(a.json('data'), existing);
-  a.run('month(2026,11,true).mealAllowance=220.50');
-  const t = a.json('totals(2026,11)');
-  assert.equal(t.income, 2820.5); assert.equal(t.left, 2520.5);
-  assert.equal(t.irsRefund, 500); assert.equal(t.spent, 200); assert.equal(t.inv, 100);
-  const expected = structuredClone(existing); expected.months['2026-11'].mealAllowance = 220.5;
-  assert.deepEqual(a.json('data'), expected);
-  a.seed(a.json('data')); assert.deepEqual(a.json('data'), expected);
-});
-
-test('meal-only month, annual totals and clearing remain consistent', () => {
-  const a = app(); a.seed(fixture);
-  a.run('month(2026,6,true).mealAllowance=220;month(2026,12,true).mealAllowance=220.5');
-  assert.equal(a.json('totals(2026,12)').hasData, true);
-  assert.equal(a.run('Array.from({length:12},(_,i)=>totals(2026,i+1).income).reduce((a,b)=>a+b,0)'), 4480.5);
-  assert.equal(a.run('Array.from({length:12},(_,i)=>totals(2026,i+1).mealAllowance).reduce((a,b)=>a+b,0)'), 440.5);
-  a.run('month(2026,12,true).mealAllowance=0');
-  assert.equal(a.json('totals(2026,12)').hasData, false);
+  a.seed(a.json('data')); assert.deepEqual(a.json('data'), existing);
+  a.run('month(2026,12,true).mealAllowance=220.5');
   assert.equal(a.json('totals(2026,12)').income, 0);
+  assert.equal(a.json('totals(2026,12)').hasData, false);
 });
 
 test('current private snapshot normalizes exactly as the deployed app, without exposing values', {
